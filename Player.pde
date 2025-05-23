@@ -40,24 +40,59 @@ class Player {
   }
 
 void update() {
-  // 1) apply gravity & move unless you've already landed and haven't jumped again
-  if (!(hasLanded && !isJumping)) {
-    velocityY += gravity;
-    y         += velocityY;
-  }
-
-  // 2) ground collision (same as before)
-  float groundY = height * 0.75;
+  // 1) always apply gravity
+  velocityY += gravity;
+  y        += velocityY;
+  
+  float groundY = height * 0.75;  // your ground line
+  
+  // 2) ground collision
   if (y > groundY - hh) {
     landOn(groundY);
+    return;
   }
-
-  // 3) rotation while airborne
-  if (isJumping) {
-    angle += rotationSpeed * 0.1;
+  
+  // 3) platform collision (both Obstacle2 & Obstacle3)
+  //    land if falling through the top edge
+  for (ObstacleBase ob : obstacles) {
+    if (ob instanceof Obstacle2 || ob instanceof Obstacle3) {
+      // cast so we can read w/h
+      float px = x, py = y;
+      float hw = this.hw, hh = this.hh;
+      Obstacle2 b = (ob instanceof Obstacle2) 
+                    ? (Obstacle2)ob 
+                    : null;
+      Obstacle3 p = (ob instanceof Obstacle3) 
+                    ? (Obstacle3)ob 
+                    : null;
+      
+      float topY, leftX, rightX;
+      if (b != null) {
+        topY   = b.y - b.h; 
+        leftX  = b.x - b.w/2;
+        rightX = b.x + b.w/2;
+      } else {
+        topY   = p.y - p.h;
+        leftX  = p.x - p.w/2;
+        rightX = p.x + p.w/2;
+      }
+      
+      // only land if we're falling through that topY this frame
+      boolean wasAbove = (y - velocityY) + hh <= topY;
+      boolean nowHits   = y + hh >= topY;
+      boolean withinX   = px + hw > leftX && px - hw < rightX;
+      
+      if (wasAbove && nowHits && withinX) {
+        landOn(topY);
+        return;
+      }
+    }
   }
-  angle %= 360;
+  
+  // 4) if we reach here, we didn’t land on anything: we stay in‐air
+  isJumping = true;
 }
+
 
   void display() {
     pushMatrix();
