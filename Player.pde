@@ -7,7 +7,9 @@ class Player {
   float angle = 0;          // Rotation angle for the sprite
   float rotationSpeed = 90; // Degrees of rotation per jump
   boolean hasLanded = false;// Used to snap rotation once per landing
-
+  int powerUps=null;           // For the power up type it holds, null measn it doesn't have a power up
+  
+  
   float hw, hh;             // Half‐width & half‐height for collision
 
   PImage img;               // Image of the player

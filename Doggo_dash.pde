@@ -7,12 +7,16 @@ float sprintGround;                      // 75% down the screen
 float speed = 4;                         // Scroll speed
 int GAME_STATE;
 final int GAME_START = 1, GAME_RUN = 2, DIE = 3;
+long score;
+int scoreDistance;    //adding up per interval instead of adding up per frame which the digit can be very large
 
 void setup() {
   size(1600,900);
   img = loadImage("sahur.jpg");
   img.resize((int)squareWidth,(int)squareWidth);
   
+  score=0;
+  scoreDistance=0;
   player = new Player(width/4, 0, img);
   sprintGround = height * 0.75;
   
@@ -30,6 +34,17 @@ void draw(){
       
       player.update();
       player.display();
+      scoreDistance+=speed;
+      if(scoreDistance>=score+1){
+        score=(int)(scoreDistance/20);
+        println(score);
+      }
+       
+      fill(0);
+      textSize(32);
+      textAlign(LEFT, TOP);
+      text("Score: " + score, 20, 20);
+      
       
       for(int i=obstacles.size()-1; i>=0; i--){
         ObstacleBase o = obstacles.get(i);
@@ -73,6 +88,27 @@ void keyPressed(){
   }
   if(key=='r' && GAME_STATE==DIE){
     resetGame();
+  }
+  if(key=='p'){
+    if(p.powerUps!=null){
+    switch(p.powerUps){
+      case 1:      //double xp
+      
+      p.powerUps=null;
+      break;
+      case 2:     //slow-mo
+      
+      p.powerUps=null;
+      break;
+    
+      case 3:    //invincibility
+    
+      p.powerUps=null;
+      break;
+    }
+   }
+  else{
+    print("You don't have powerups!");
   }
 }
 
