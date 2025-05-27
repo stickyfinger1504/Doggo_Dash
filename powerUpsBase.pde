@@ -18,7 +18,7 @@ abstract class powerUpsBase {
   boolean checkCollected(Player p) {
     float dist = dist(x, y, p.x, p.y);
     if (dist < size/2 + p.hw) { // simple radius check
-      onCollect(p);
+      //onCollect(p);
       return true;
     }
     return false;

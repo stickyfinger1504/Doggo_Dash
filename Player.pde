@@ -7,38 +7,40 @@ class Player {
   float angle = 0;          // Rotation angle for the sprite
   float rotationSpeed = 90; // Degrees of rotation per jump
   boolean hasLanded = false;// Used to snap rotation once per landing
-  int powerUps=null;           // For the power up type it holds, null measn it doesn't have a power up
+  int powerUps=0;           // For the power up type it holds, null measn it doesn't have a power up
+  boolean powerUpActivate=false;
   
   
   float hw, hh;             // Half‐width & half‐height for collision
 
   PImage img;               // Image of the player
 
+ 
   Player(float startX, float startY, PImage playerImg) {
     x = startX;
     y = startY;
     img = playerImg;
-    hw = squareWidth/2;
-    hh = squareWidth/2;
+    hw = squareWidth / 2;
+    hh = squareWidth / 2;
   }
 
   // Reset to initial state
   void reset() {
-    x = width/4;
-    y = 0;
+    x = width / 4;
+    y = 0; // Or your player's initial Y
     velocityY = 0;
     isJumping = false;
-    angle = 0;
-    hasLanded = false;
+    // angle = 0;
+    // hasLanded = false;
   }
 
   // Land safely on a given y-coordinate
   void landOn(float groundY) {
-    y = groundY - hh;
+    y = groundY - hh; // Adjust so player's feet are on groundY
     velocityY = 0;
     isJumping = false;
-    hasLanded = true;
-    angle = snapAngle(angle);
+    // hasLanded = true;
+    // angle = snapAngle(angle); // If using rotation
   }
 
 void update() {

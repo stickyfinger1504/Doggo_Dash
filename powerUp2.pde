@@ -1,4 +1,4 @@
-class powerUp2 extends PowerUp {
+class powerUp2 extends powerUpsBase {
   float duration=480;
   powerUp2(float x, float y) {
     super(x, y);
