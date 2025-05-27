@@ -12,7 +12,7 @@ int scoreDistance;                  // adding up per interval
 int activePowerUp = 0;              // 0 = none, 1 = double points, 2 = slow-mo, 3 = invincible
 int POWERUP_DURATION=0;             // e.g. 10 seconds at 60fps
 int incrementValue = 1;
-
+int scoreCounter=0;
 // <<< NEW VARIABLES START >>>
 ArrayList<powerUpsBase> powerUpsList; // List to hold active power-ups on screen
 PImage doublePointsImg;             // Image for double points power-up (optional)
@@ -111,9 +111,11 @@ void draw() {
       } else {
         incrementValue =1;
       }
-      scoreDistance += speed; // Use the current effective speed for score distance
-      // Assuming scoreDistance is cumulative for calculating score chunks
-      score = scoreDistance / 20 + incrementValue;
+      scoreCounter++;
+      if(scoreCounter%10==0){
+        score+=incrementValue;
+        scoreCounter=0;
+      }
       
 
       // Countdown power-up timer & expiration
