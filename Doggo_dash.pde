@@ -107,6 +107,7 @@ void keyPressed(){
       break;
     }
    }
+  }
   else{
     print("You don't have powerups!");
   }

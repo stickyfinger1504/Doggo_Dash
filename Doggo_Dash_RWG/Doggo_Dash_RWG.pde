@@ -10,7 +10,7 @@ boolean canChangeElevation = true;
 boolean canAddObstacle = true;
 boolean currentlyAddingObstacle = false;
 
-int currElevation = 0;
+int currElevation = 1;
 int postAddingTimer = 0;
 int distance = 0;
 
@@ -149,8 +149,8 @@ void updateWorld() {
      */
     if (rng1 == 0 && canChangeElevation) {
         // Elevation Decrease
-        if (elevationType == 0 && currElevation != 0) {
-            obstacleSize = int(random(0, currElevation));
+        if ((elevationType == 0 || (currElevation > 8 && elevationType == 1)) && currElevation >= 2) {
+            obstacleSize = int(random(1, currElevation - 1));
             currElevation -= obstacleSize;
             postAddingTimer = 3 + obstacleSize;
         }
@@ -235,7 +235,12 @@ void initializeEmptyAir() {
         ArrayList<Integer> newFraction = new ArrayList<Integer>();
         
         for (int j = 0; j < worldHeight; j++) {
-            newFraction.add(0);
+          if (j != 0) {
+              newFraction.add(0);
+          }
+          else {
+              newFraction.add(1);
+          }
         }
         
         world.add(newFraction);
