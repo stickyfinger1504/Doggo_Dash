@@ -232,16 +232,12 @@ void keyPressed() {
     } else {
       println("You don't have any power-ups to activate!");
     }
-<<<<<<< HEAD
-=======
    }
-  }
+
   else{
     print("You don't have powerups!");
->>>>>>> b44960091d5af2652a4a3adc2caa74f49b1c7856
-  }
 }
-
+}
 void resetGame() {
   player.reset();
   createObstacles(); // Spawns power-ups and test obstacles
