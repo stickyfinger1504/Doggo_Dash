@@ -46,7 +46,7 @@ class Player {
 void update() {
   // 1) always apply gravity
   velocityY += gravity;
-  y        += velocityY;
+  y+= velocityY;
   
   float groundY = height * 0.75;  // your ground line
   

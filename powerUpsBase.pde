@@ -9,7 +9,7 @@ abstract class powerUpsBase {
   }
 
   void update() {
-    x -= speed;  // move left with the world
+    //x -= speed;  // move left with the world
   }
 
   abstract void display();

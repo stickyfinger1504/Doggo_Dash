@@ -9,7 +9,7 @@ abstract class ObstacleBase {
   
   // shared movement
   void update() {
-    x -= speed;
+    //x -= speed;
   }
   
   // draw yourself

@@ -60,18 +60,17 @@ void draw() {
       line(0, sprintGround, width, sprintGround);
 
       // --- Speed Management ---
-      float actualSpeedThisFrame = baseScrollSpeed; // Start with the normal base speed
-
-      if (gameMovementStoppedByInvincibility) {
-        actualSpeedThisFrame = 0; // Game movement stops if invincible player hits a spike
-      } else if (player.powerUpActivate && activePowerUp == 2) { // Slo-mo (and not stopped)
-        actualSpeedThisFrame = baseScrollSpeed * 0.5f;
+      //float actualSpeedThisFrame = baseScrollSpeed; // Start with the normal base speed
+      float effectiveSpeed = speed; // base speed
+      if (player.powerUpActivate && activePowerUp == 2) {  // Use activePowerUp, not player.powerUps
+          effectiveSpeed = speed * 0.5f;
+          player.jumpStrength = -12;
       }
       
       // Apply this frame's effective speed to the global 'speed' variable
       // that update() methods of entities might be using.
-      float previousFrameGlobalSpeed = speed; // Store if needed, though likely overwritten each frame
-      speed = actualSpeedThisFrame;
+      //float previousFrameGlobalSpeed = speed; // Store if needed, though likely overwritten each frame
+      //speed = actualSpeedThisFrame;
       // --- End Speed Management ---
 
 
@@ -91,6 +90,7 @@ void draw() {
       // Update and display power-ups
       for (int i = powerUpsList.size() - 1; i >= 0; i--) {
         powerUpsBase pu = powerUpsList.get(i);
+        pu.x -=  effectiveSpeed; // move horizontally
         pu.update(); // Uses the global 'speed' which is now actualSpeedThisFrame
         pu.display();
 
@@ -160,27 +160,20 @@ void draw() {
       // Obstacle loop: update, display, and collision
       for (int i = obstacles.size() - 1; i >= 0; i--) {
         ObstacleBase o = obstacles.get(i);
+         o.x -=  effectiveSpeed;  // move horizontally
         o.update(); // Uses the global 'speed'
         o.display();
 
-        if (o.checkCollision(player)) {
-          if (player.powerUpActivate && activePowerUp == 3) { // INVINCIBILITY ACTIVE
-            // Player does not die.
-            if (o instanceof Obstacle1) {
-              // "if the player collides from the front of the obstacle, the games simply just stop moving"
-              println("Invincible player hit a spike! Game movement stopped.");
-              gameMovementStoppedByInvincibility = true;
-              // The "slide on top" behavior for Obstacle1 is tricky without changing Player class
-              // or Obstacle1 fundamentally. With gameMovementStopped, Obstacle1 is stationary.
-              // Player won't die and can attempt to jump on/over the static spike.
-            }
-            // For Obstacle2 and Obstacle3, invincibility means no death.
-            // Their platform behavior is handled by Player.update()
-          } else { // Not invincible
-            GAME_STATE = DIE;
-            noLoop(); // Stop draw loop
-          }
-        }
+      if (o.checkCollision(player)) {
+  if (player.powerUpActivate && activePowerUp == 3) {
+    // Invincible - ignore death, pass through, do nothing
+    // Optionally, you can add some effect here (like sound or visual feedback)
+  } else {
+    GAME_STATE = DIE;
+    noLoop();
+  }
+}
+
 
         if (o.x < -100 && obstacles.contains(o)) { // Check if obstacle still exists before trying to respawn
             // Respawn logic for obstacles (if any are to be respawned)
@@ -282,63 +275,86 @@ void resetGame() {
 // int numSloMoToSpawn = 1;
 // float powerUpSpacingX = 600; // General spacing for subsequent power-ups
 
-void createObstacles() {
-  obstacles.clear();     // Clear any existing obstacles
-  powerUpsList.clear();  // Clear any existing power-ups
+//void createObstacles() {
+//  obstacles.clear();     // Clear any existing obstacles
+//  powerUpsList.clear();  // Clear any existing power-ups
 
-  float currentX = width; // Starting reference for spawning off-screen to the right
+//  float currentX = width; // Starting reference for spawning off-screen to the right
 
-  // --- Phase 1: Early Invincibility Power-up for Testing ---
-  if (numInvincibilityToSpawn > 0) {
-    // Spawn one invincibility power-up relatively close and easy to get
-    // Adjust Y position as needed, sprintGround - 70 makes it float a bit
-    powerUpsList.add(new powerUp3(currentX + 400, sprintGround - 70)); 
-    println("Test: Spawned early Invincibility PowerUp at x=" + (currentX + 400));
-  }
+//  // --- Phase 1: Early Invincibility Power-up for Testing ---
+//  if (numInvincibilityToSpawn > 0) {
+//    // Spawn one invincibility power-up relatively close and easy to get
+//    // Adjust Y position as needed, sprintGround - 70 makes it float a bit
+//    powerUpsList.add(new powerUp3(currentX + 400, sprintGround - 70)); 
+//    println("Test: Spawned early Invincibility PowerUp at x=" + (currentX + 400));
+//  }
 
-  // --- Phase 2: Spike Gauntlet for Testing Invincibility ---
-  // This group of spikes should appear after the player has a chance to grab the first invincibility power-up.
-  float spikeTestGroupStartX = currentX + 800; // Starts 400px after the early invincibility PU appears
+//  // --- Phase 2: Spike Gauntlet for Testing Invincibility ---
+//  // This group of spikes should appear after the player has a chance to grab the first invincibility power-up.
+//  float spikeTestGroupStartX = currentX + 800; // Starts 400px after the early invincibility PU appears
   
-  if (numObstacle1ToSpawnForTest > 0) {
-    println("Test: Spawning " + numObstacle1ToSpawnForTest + " Obstacle1 (spikes) starting at x=" + spikeTestGroupStartX);
-    for (int i = 0; i < numObstacle1ToSpawnForTest; i++) {
-      // Spawn spikes close together to form a clear test hazard
-      // Adjust spacing (e.g., 100, 120) based on your Obstacle1 sprite size
-      float spikeX = spikeTestGroupStartX + (i * 120); 
-      obstacles.add(new Obstacle1(spikeX, sprintGround)); 
-    }
+//  if (numObstacle1ToSpawnForTest > 0) {
+//    println("Test: Spawning " + numObstacle1ToSpawnForTest + " Obstacle1 (spikes) starting at x=" + spikeTestGroupStartX);
+//    for (int i = 0; i < numObstacle1ToSpawnForTest; i++) {
+//      // Spawn spikes close together to form a clear test hazard
+//      // Adjust spacing (e.g., 100, 120) based on your Obstacle1 sprite size
+//      float spikeX = spikeTestGroupStartX + (i * 120); 
+//      obstacles.add(new Obstacle1(spikeX, sprintGround)); 
+//    }
+//  }
+
+//  // --- Phase 3: Spawn Other Power-ups Further Down the Line ---
+//  // These will appear after the initial invincibility test setup.
+//  float furtherItemsX = spikeTestGroupStartX + (numObstacle1ToSpawnForTest * 120) + 400; // Start after the spike group
+
+//  // Spawn Double Points
+//  int doublePointsSpawned = 0;
+//  for (int i = 0; i < numDoublePointsToSpawn; i++) {
+//    powerUpsList.add(new powerUp1(furtherItemsX + (doublePointsSpawned * powerUpSpacingX), sprintGround - 60));
+//    doublePointsSpawned++;
+//  }
+//  if (doublePointsSpawned > 0) {
+//    furtherItemsX += doublePointsSpawned * powerUpSpacingX;
+//  }
+
+
+//  // Spawn Slo-Mo
+//  int sloMoSpawned = 0;
+//  for (int i = 0; i < numSloMoToSpawn; i++) {
+//    powerUpsList.add(new powerUp2(furtherItemsX + (sloMoSpawned * powerUpSpacingX), sprintGround - 80));
+//    sloMoSpawned++;
+//  }
+//   if (sloMoSpawned > 0) {
+//    furtherItemsX += sloMoSpawned * powerUpSpacingX;
+//  }
+
+//  // Spawn any additional Invincibility Power-ups if configured for more than one
+//  // (The first one was prioritized for the early test)
+//  int invincibilitySpawnedSoFar = (numInvincibilityToSpawn > 0) ? 1 : 0;
+//  for (int i = invincibilitySpawnedSoFar; i < numInvincibilityToSpawn; i++) {
+//     powerUpsList.add(new powerUp3(furtherItemsX + ((i - invincibilitySpawnedSoFar) * powerUpSpacingX), sprintGround - 70));
+//  }
+//}
+
+void createObstacles() {
+  obstacles.clear();       // Clear existing obstacles
+  powerUpsList.clear();    // Clear existing power-ups
+
+  float baseX = width;
+
+  // Spawn some obstacles normally
+  for (int i = 0; i < 3; i++) {
+    obstacles.add(new Obstacle1(baseX + i * 800, sprintGround));  // spikes
+  }
+  for (int i = 0; i < 3; i++) {
+    obstacles.add(new Obstacle2(baseX + 400 + i * 800, sprintGround));  // solid blocks
+  }
+  for (int i = 0; i < 3; i++) {
+    obstacles.add(new Obstacle3(baseX + 200 + i * 800, sprintGround));  // one-way platforms
   }
 
-  // --- Phase 3: Spawn Other Power-ups Further Down the Line ---
-  // These will appear after the initial invincibility test setup.
-  float furtherItemsX = spikeTestGroupStartX + (numObstacle1ToSpawnForTest * 120) + 400; // Start after the spike group
+  // Spawn a Slow-Mo power-up early for testing
+  powerUpsList.add(new powerUp2(baseX + 600, sprintGround - 50));  // position slightly above ground
 
-  // Spawn Double Points
-  int doublePointsSpawned = 0;
-  for (int i = 0; i < numDoublePointsToSpawn; i++) {
-    powerUpsList.add(new powerUp1(furtherItemsX + (doublePointsSpawned * powerUpSpacingX), sprintGround - 60));
-    doublePointsSpawned++;
-  }
-  if (doublePointsSpawned > 0) {
-    furtherItemsX += doublePointsSpawned * powerUpSpacingX;
-  }
-
-
-  // Spawn Slo-Mo
-  int sloMoSpawned = 0;
-  for (int i = 0; i < numSloMoToSpawn; i++) {
-    powerUpsList.add(new powerUp2(furtherItemsX + (sloMoSpawned * powerUpSpacingX), sprintGround - 80));
-    sloMoSpawned++;
-  }
-   if (sloMoSpawned > 0) {
-    furtherItemsX += sloMoSpawned * powerUpSpacingX;
-  }
-
-  // Spawn any additional Invincibility Power-ups if configured for more than one
-  // (The first one was prioritized for the early test)
-  int invincibilitySpawnedSoFar = (numInvincibilityToSpawn > 0) ? 1 : 0;
-  for (int i = invincibilitySpawnedSoFar; i < numInvincibilityToSpawn; i++) {
-     powerUpsList.add(new powerUp3(furtherItemsX + ((i - invincibilitySpawnedSoFar) * powerUpSpacingX), sprintGround - 70));
-  }
+  println("Spawned Slow-Mo power-up at x=" + (baseX + 600));
 }
