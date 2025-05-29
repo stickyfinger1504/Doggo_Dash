@@ -1,115 +1,136 @@
-// In Player.java
 class Player {
-  float x, y;             // Player center position
-  float velocityY = 0;
-  float gravity = 0.35f;
-  float originalJumpStrength = -11; 
-  float jumpStrength = originalJumpStrength;
-  boolean isJumping = true; // Assume airborne initially; landOn() will set to false.
+  float x, y;               // Position of the player
+  float velocityY = 0;      // Vertical velocity (affected by gravity)
+  float gravity = 0.3;      // Gravity constant (affects fall speed)
+  float jumpStrength = -10; // How strong the jump is
+  boolean isJumping = false;// Check if the character is in the air
+  float angle = 0;          // Rotation angle for the sprite
+  float rotationSpeed = 90; // Degrees of rotation per jump
+  boolean hasLanded = false;// Used to snap rotation once per landing
+  int powerUps=0;           // For the power up type it holds, null measn it doesnt have a power up
+  boolean powerUpActivate=false;
 
-  float hw, hh;             
-  int powerUps = 0;         
-  boolean powerUpActivate = false; 
-  PImage img;
+
+  float hw, hh;             // Half‐width & half‐height for collision
+
+  PImage img;               // Image of the player
+
 
   Player(float startX, float startY, PImage playerImg) {
     x = startX;
-    y = startY; 
+    y = startY;
     img = playerImg;
-    // Use PLAYER_SPRITE_WIDTH from the main sketch (it's final, so effectively a constant)
-    hw = PLAYER_SPRITE_WIDTH / 2; 
-    hh = PLAYER_SPRITE_WIDTH / 2;
+    hw = squareWidth / 2;
+    hh = squareWidth / 2;
   }
 
+  // Reset to initial state
   void reset() {
+    x = width / 4;
+    y = 0; // Or your player's initial Y
     velocityY = 0;
-    isJumping = false; // Assume reset places player on initial ground
-    jumpStrength = originalJumpStrength;
-    powerUps = 0;
-    powerUpActivate = false;
-    // x and y are reset by the main sketch's resetGame() function based on RWG state
+    isJumping = false;
+    // angle = 0;
+    // hasLanded = false;
   }
 
-  void landOn(float surfaceY) {
-    y = surfaceY - hh; 
+  // Land safely on a given y-coordinate
+  void landOn(float groundY) {
+    y = groundY - hh; // Adjust so player's feet are on groundY
     velocityY = 0;
-    isJumping = false; // Player is now landed
+    isJumping = false;
+    // hasLanded = true;
+    // angle = snapAngle(angle); // If using rotation
   }
 
-  // Player's main update method
-  void update(ArrayList<ArrayList<Integer>> worldTiles, int tileSize, int screenHeight, float worldScrollOffset) {
-    // 1. ALWAYS apply gravity to current velocity
+  void update() {
+    // 1) always apply gravity
     velocityY += gravity;
-    // 2. Update position based on new velocity
-    y += velocityY;
+    y        += velocityY;
 
-    // Assume player is airborne for this frame's logic,
-    // landing checks (here for tiles, or by objects via their checkCollision) will set isJumping = false.
-    isJumping = true; 
+    float groundY = height * blockSize;  // your ground line
 
-    // 3. --- Collision with RWG Tile-Based Ground (basic TILE_GROUND) ---
-    if (velocityY >= 0) { // Only attempt to land if moving downwards or was stationary
-      float playerFeetY = y + hh;
-      float playerPrevFeetY = (y - velocityY) + hh; 
-      float playerLeftEdgeInWorld = (x - hw) + worldScrollOffset;
-      float playerRightEdgeInWorld = (x + hw) + worldScrollOffset;
-      int firstTileColToCheck = floor(playerLeftEdgeInWorld / tileSize);
-      int lastTileColToCheck = floor(playerRightEdgeInWorld / tileSize);
-      
-      boolean landedOnTileThisUpdate = false;
-      for (int currentCol = firstTileColToCheck; currentCol <= lastTileColToCheck; currentCol++) {
-        if (currentCol >= 0 && currentCol < worldTiles.size()) { 
-          int tileRowAtFeet = floor((screenHeight - playerFeetY) / tileSize);
+    // 2) ground collision
+    if (y > groundY - hh) {
+      landOn(groundY);
+      return;
+    }
 
-          for (int rowOffset = 0; rowOffset <= 1; rowOffset++) { 
-            int checkRow = tileRowAtFeet + rowOffset;
-            if (checkRow >= 0 && checkRow < WORLD_MAX_TILE_HEIGHT) { // Use constant from main sketch
-              if (worldTiles.get(currentCol).get(checkRow) == TILE_GROUND) { // Use constant from main
-                float groundTileTopSurfaceY = screenHeight - ((checkRow + 1) * tileSize);
-                float tileScreenLeftX = (currentCol * tileSize) - worldScrollOffset;
-                float tileScreenRightX = tileScreenLeftX + tileSize;
-
-                if ((x + hw > tileScreenLeftX && x - hw < tileScreenRightX) && 
-                    playerFeetY >= groundTileTopSurfaceY && 
-                    playerPrevFeetY <= groundTileTopSurfaceY + Math.max(1.0f, velocityY * 0.3f + 2.0f) ) { 
-                  landOn(groundTileTopSurfaceY); 
-                  landedOnTileThisUpdate = true; // isJumping is now false
-                  break; 
-                }
-              }
-            }
-          }
-        }
-        if (landedOnTileThisUpdate) break; 
+    // 3) platform collision (both Obstacle1 & Obstacle3)
+    //    land if falling through the top edge
+    for (ObstacleBase ob : obstacles) {
+      float topY, leftX, rightX;
+      if (ob instanceof Obstacle1) {
+        Obstacle1 b = (Obstacle1)ob;
+        topY   = b.y - b.h;
+        leftX  = b.x - b.w / 2;
+        rightX = b.x + b.w / 2;
+      } else if (ob instanceof Obstacle3) {
+        Obstacle3 p = (Obstacle3)ob;
+        topY   = p.y - p.h;
+        leftX  = p.x - p.w / 2;
+        rightX = p.x + p.w / 2;
+      } else {
+        continue; // skip other types
       }
-      if (landedOnTileThisUpdate) {
-          return; // Player landed on RWG tile ground, physics resolved for this frame by this method.
+      //if (ob instanceof Obstacle1 || ob instanceof Obstacle3) {
+      //  // cast so we can read w/h
+      //  float px = x, py = y;
+      //  float hw = this.hw, hh = this.hh;
+      //  Obstacle1 b = (ob instanceof Obstacle1)
+      //    ? (Obstacle1)ob
+      //    : null;
+      //  Obstacle3 p = (ob instanceof Obstacle3)
+      //    ? (Obstacle3)ob
+      //    : null;
+
+      //  float topY, leftX, rightX;
+      //  if (b != null) {
+      //    topY   = b.y - b.h;
+      //    leftX  = b.x - b.w/2;
+      //    rightX = b.x + b.w/2;
+      //  } else {
+      //    topY   = p.y - p.h;
+      //    leftX  = p.x - p.w/2;
+      //    rightX = p.x + p.w/2;
+      //  }
+
+      // only land if we're falling through that topY this frame
+      boolean wasAbove = (y - velocityY) + hh <= topY;
+      boolean nowHits  = y + hh >= topY;
+      boolean withinX  = x + hw > leftX && x - hw < rightX;
+
+      if (wasAbove && nowHits && withinX) {
+        landOn(topY);
+        return;
       }
-    } 
-    
-    // If Player.update reaches here, it means:
-    // - Player did NOT land on a basic RWG ground tile (TILE_GROUND) within this method.
-    // - isJumping is still true (or was reset to true at start of this method).
-    // - The player will continue their current trajectory (affected by gravity).
-    // - Interactions with ObstacleBase objects (like your green Obstacle2 blocks)
-    //   will be handled by their respective checkCollision() methods when called later
-    //   in the main sketch's updateAndDrawObstacles() function. If an Obstacle2
-    //   object calls player.landOn(), 'isJumping' will become false and velocityY will be 0
-    //   for the *next* frame's Player.update().
+    }
+    isJumping = true;
   }
+
+
 
   void display() {
     pushMatrix();
-    translate(x, y); 
+    translate(x, y);
+    rotate(radians(angle));
     imageMode(CENTER);
     image(img, 0, 0);
     popMatrix();
   }
 
   void jump() {
-    if (!isJumping) { 
-      velocityY = jumpStrength;
-      isJumping = true; 
-    }
+    velocityY = jumpStrength;
+    isJumping = true;
+    hasLanded = false;
+  }
+
+  // Snap to nearest multiple of 90°
+  float snapAngle(float a) {
+    float deg = degrees(a);
+    float snapped = round(deg/90)*90;
+    if (snapped < 0)   snapped += 360;
+    if (snapped >= 360) snapped -= 360;
+    return snapped;
   }
 }

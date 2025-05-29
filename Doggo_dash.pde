@@ -1,442 +1,566 @@
-// === Constants ===
-final int WORLD_VIEW_COLUMNS = 22;
-final int WORLD_MAX_TILE_HEIGHT = 20;
-final int TILE_SIZE = 80;
+// Crucial Variables
+final int worldLength = 22; // Size() untuk world yang kelihatan di screen
+final int worldHeight = 20; // Maximum world height
+final int blockSize = 80;
+final int speed = 5;
+float speedTemp = speed; // for slo-mo
+long score = 0;
+int scoreDistance;
+int prevDistance = 0; // NEW: Track previous distance for world update
 
-final int TILE_AIR = 0;
-final int TILE_GROUND = 1;
-final int TILE_SPIKE_PLACEHOLDER = 2;       // Obstacle1 (spikes)
-final int TILE_OBSTACLE2_PLACEHOLDER = 4;   // Obstacle2 (green blocks)
-
-final int TILE_POWERUP_DOUBLE_POINTS = 6;
-final int TILE_POWERUP_SLOMO = 7;
-final int TILE_POWERUP_INVINCIBLE = 8;
-
-// === RWG State Variables ===
-boolean rwgCanChangeElevation = true;
-boolean rwgCanAddObstacle = true;
-boolean rwgCurrentlyAddingFeature = false;
-
-int rwgCurrentElevation = 3;
-int rwgPostFeatureTimer = 0;
-int rwgFeatureDurationCounter = 0;
-int rwgRavineDepth = 0;
-int rwgActiveFeatureTileType = TILE_AIR;
-
-// === Gameplay variables ===
-float worldScrollPixelOffset = 0;
-float baseGameSpeed = 4.0f;
-float currentGameSpeed = baseGameSpeed;
-
-final float PLAYER_SPRITE_WIDTH = 50;
-PImage imgPlayer;
-
-ArrayList<ArrayList<Integer>> worldTileData;
-ArrayList<ObstacleBase> gameObstacles;
-ArrayList<powerUpsBase> activePowerUpsList;
+// player related
+final float squareWidth = 80;       // Player sprite size
+PImage img;                         // Player image
 Player player;
 
-int gameState;
-final int STATE_GAME_RUN = 2;
-final int STATE_GAME_OVER = 3;
+// obstacle
+ArrayList<ObstacleBase> obstacles;  // Holds all obstacle types
 
-long score = 0;
-int scoreFrameCounter = 0;
-int scorePointValue = 1;
+// power ups
+ArrayList<powerUpsBase> powerUpsList;
+int activePowerUp = 0;        // 0 = none, 1 = double points, 2 = slow-mo, 3 = invincible
+int POWERUP_DURATION = 0;
+int incrementValue = 1;       // Score multiplier
+boolean gameMovementStoppedByInvincibility = false;
+int powerUpCooldown = 0; // frames to wait before spawning next power-up
+final int powerUpCooldownMax = 20; // e.g. must wait 10 columns
 
-int activePowerUpType = 0;
-int powerUpEffectTimer = 0;
+// GAME_STATE
+int GAME_STATE;
+final int GAME_START = 1, GAME_RUN = 2, DIE = 3;
 
-// --- Setup ---
+ArrayList<ArrayList<Integer>> world;
+
+// RWG Variables
+boolean canChangeElevation = true;
+boolean canAddObstacle = true;
+boolean currentlyAddingObstacle = false;
+
+int currElevation = 1;
+int postAddingTimer = 0;
+int distance = 0;
+
+int obstacleSize = 0; // RNG for obstacle size
+int ravineDepth = 0; // RNG for ravine gap depth
+
+/*
+ * Free Roam World Designs
+ */
+int[][] world1 = {
+  {1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 1, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 1},
+  {1, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+};
+
+int[][] world2 = {
+  {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+  {1, 8, 0, 2, 2, 0, 2, 2, 0, 0, 2, 2, 0, 2, 2, 0, 0, 3, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1},
+  {1, 0, 0, 2, 2, 0, 2, 2, 0, 0, 2, 2, 0, 2, 2, 0, 0, 0, 0, 1},
+  {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 0, 1},
+  {1, 3, 0, 2, 1, 2, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1},
+  {1, 3, 0, 0, 2, 0, 0, 0, 1, 2, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1},
+  {1, 3, 0, 0, 0, 0, 0, 0, 1, 1, 2, 0, 0, 1, 0, 0, 0, 0, 0, 1},
+  {1, 3, 0, 0, 2, 0, 0, 0, 1, 1, 1, 2, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+  {1, 0, 0, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 1, 1, 1, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1},
+  {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 0, 1},
+  {1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 3, 0, 0, 1},
+  {1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 3, 0, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1},
+  {1, 0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+  {1, 0, 0, 0, 0, 1, 1, 2, 1, 2, 2, 2, 2, 3, 0, 1, 1, 0, 0, 1},
+  {1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 3, 0, 2, 2, 0, 9, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 1},
+  {1, 0, 0, 0, 0, 2, 2, 0, 1, 0, 0, 0, 0, 3, 0, 2, 2, 0, 0, 1},
+  {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1},
+  {1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 0, 0, 0, 0, 0, 3, 1},
+  {1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 2, 2, 2, 3, 1},
+  {1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 3, 1},
+  {1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+  {1, 0, 0, 0, 0, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1},
+  {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 3, 0, 0, 0, 1, 1, 1, 3, 1},
+  {1, 0, 9, 0, 1, 1, 2, 0, 0, 1, 1, 3, 1, 2, 0, 0, 1, 1, 3, 1},
+  {1, 0, 0, 0, 1, 1, 1, 2, 0, 0, 1, 3, 1, 1, 2, 0, 0, 1, 3, 1},
+  {1, 2, 2, 2, 1, 1, 1, 1, 2, 0, 0, 0, 1, 1, 1, 2, 0, 0, 0, 1},
+  {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+};
+/*
+ */
+
+// Setup
+// Setup
 void setup() {
   size(1600, 900);
-
-  worldTileData = new ArrayList<ArrayList<Integer>>();
-  initializeEmptyAirForRWG();
-
-  imgPlayer = loadImage("sahur.jpg");
-  if (imgPlayer == null) {
-    println("Player image 'sahur.jpg' not found in data folder.");
-    exit();
-  }
-  imgPlayer.resize((int)PLAYER_SPRITE_WIDTH, (int)PLAYER_SPRITE_WIDTH);
-
-  gameObstacles = new ArrayList<>();
-  activePowerUpsList = new ArrayList<>();
-
-  float initialPlayerY = height - (rwgCurrentElevation * TILE_SIZE) - PLAYER_SPRITE_WIDTH / 2;
-  player = new Player(width / 4, initialPlayerY, imgPlayer);
-
-  gameState = STATE_GAME_RUN;
-  println("Setup complete. Game running.");
+  background(152, 255, 250);
+  img = loadImage("sahur.jpg"); // Make sure player.png is in your data folder!
+  img.resize((int)squareWidth, (int)squareWidth);
+  powerUpsList = new ArrayList<powerUpsBase>();
+  world = new ArrayList<ArrayList<Integer>>();
+  player = new Player(width / 4, 0, img);
+  initializeEmptyAir();
+  GAME_STATE = GAME_RUN;
+  obstacles = new ArrayList<ObstacleBase>();
+  //noStroke();
 }
 
-// --- Main draw loop ---
-void draw() {
-  if (gameState == STATE_GAME_RUN) {
-    background(152, 255, 250);
+// THE REAL DEAL
+void updateWorld() {
+  // Variables
+  int rng1; // Elevation adjust or not
+  int rng2; // Create obstacle or not
 
-    updateCurrentGameSpeed();
-    handleWorldScrollAndGeneration();
+  int elevationType; // Increase or Decrease
+  int obstacleType; // Obstacle Type
 
-    player.update(worldTileData, TILE_SIZE, height, worldScrollPixelOffset);
-
-    updateAndDrawObstacles();
-    updateAndDrawPowerUps();
-
-    drawWorldTiles(worldScrollPixelOffset);
-    drawPlayerWithEffects();
-
-    handleGameScore();
-    drawGameHUD();
-    checkActivePowerUpExpiration();
-
-  } else if (gameState == STATE_GAME_OVER) {
-    displayGameOverScreen();
+  // Initialize world fraction
+  ArrayList<Integer> worldFraction = new ArrayList<Integer>();
+  for (int i = 0; i < worldHeight; i++) {
+    worldFraction.add(0);
   }
+
+  // Delete the last part
+  world.remove(0); // Unload the leftmost fraction
+
+  // Initialize RNG
+  rng1 = int(random(0, 10));
+  rng2 = int(random(0, 10));
+  elevationType = int(random(0, 3));
+
+  /*
+     * Elevation Adjust Starts
+   */
+  if (rng1 == 0 && canChangeElevation) {
+    // Elevation Decrease
+    if ((elevationType == 0 || (currElevation > 8 && elevationType == 1)) && currElevation >= 2) {
+      obstacleSize = int(random(1, currElevation - 1));
+      currElevation -= obstacleSize;
+      postAddingTimer = 3 + obstacleSize;
+    }
+
+    // Elevation Increase
+    else if (currElevation < 15) {
+      obstacleSize = int(random(0, 5)) == 0 ? 2 : 1;
+      currElevation += obstacleSize;
+      postAddingTimer = 3;
+    }
+
+    // Variable Update
+    canChangeElevation = false;
+    canAddObstacle = false;
+  }
+  /*
+     * Elevation Adjust Ends
+   */
+
+  /*
+     * Obstacle Creation Starts
+   */
+  if (rng2 == 0 && canAddObstacle) {
+    obstacleType = int(random(0, 5));
+
+    // Gap Jump
+    if (obstacleType == 0 && currElevation > 0) {
+      obstacleSize = int(random(0, 4)) + 1;
+      ravineDepth = int(random(0, currElevation)) + 1;
+      postAddingTimer = obstacleSize + 1;
+    }
+
+    // Spike
+    else {
+      obstacleSize = int(random(0, 3)) + 1;
+      postAddingTimer = obstacleSize + 2;
+    }
+
+    // Variable Update
+    currentlyAddingObstacle = true;
+    canChangeElevation = false;
+    canAddObstacle = false;
+  }
+  /*
+     * Obstacle Creation Ends
+   */
+
+  // Generate Obstacles
+  if (currentlyAddingObstacle) {
+    worldFraction.set(currElevation - ravineDepth, 2);
+    obstacleSize--;
+  }
+
+  if (obstacleSize <= 0) {
+    currentlyAddingObstacle = false;
+    obstacleSize = 0;
+  }
+
+  // Update Timer
+  postAddingTimer--;
+
+  if (postAddingTimer <= 0) {
+    canChangeElevation = true;
+    canAddObstacle = true;
+
+    ravineDepth = 0;
+    postAddingTimer = 0;
+  }
+
+  // Generate obstacle 1 based on the elevation
+  for (int i = 0; i < currElevation - ravineDepth; i++) {
+    worldFraction.set(i, 1);
+  }
+
+  // --- POWER-UP SPAWN LOGIC START ---
+
+  if (powerUpCooldown > 0) {
+    powerUpCooldown--;
+  } else {
+    // Find an obstacle1 with air above in this column to spawn a power-up above it
+    for (int j = 0; j < worldHeight - 1; j++) {
+      if (worldFraction.get(j) == 1 && worldFraction.get(j + 1) == 0) {
+        float x = world.size() * blockSize; // Current new column position
+        float y = height - ((j + 1) * blockSize); // One block above obstacle1
+
+        int type = int(random(1, 4)); // Randomly 1, 2 or 3 power-up type
+
+        //if (type == 1)
+        //  powerUpsList.add(new powerUp1(x, y - blockSize / 2));
+        //else if (type == 2)
+        //powerUpsList.add(new powerUp2(x, y - blockSize / 2));
+        //else
+        powerUpsList.add(new powerUp3(x, y - blockSize / 2));
+
+        powerUpCooldown = powerUpCooldownMax; // Reset cooldown
+        break; // Only spawn one power-up per new column
+      }
+    }
+  }
+  // --- POWER-UP SPAWN LOGIC END ---
+
+  // Put the generated fraction into the world
+  world.add(worldFraction);
 }
 
-// --- Game logic helpers ---
-void updateCurrentGameSpeed() {
-  currentGameSpeed = baseGameSpeed;
-  if (player.powerUpActivate && activePowerUpType == 2) { // Slow-mo
-    currentGameSpeed = baseGameSpeed * 0.5f;
-  }
-}
+// Buat initialize worldnya biar empty alias ada ruang buat start
+void initializeEmptyAir() {
+  for (int i = 0; i < worldLength; i++) {
+    ArrayList<Integer> newFraction = new ArrayList<Integer>();
 
-void handleWorldScrollAndGeneration() {
-  worldScrollPixelOffset += currentGameSpeed;
-  if (worldScrollPixelOffset >= TILE_SIZE) {
-    generateNextWorldColumnAndEntities();
-    worldScrollPixelOffset -= TILE_SIZE;
-  }
-}
-
-void updateAndDrawObstacles() {
-  for (int i = gameObstacles.size() - 1; i >= 0; i--) {
-    ObstacleBase o = gameObstacles.get(i);
-    o.x -= currentGameSpeed;
-    
-    o.display();  // Draw spikes and Obstacle2 blocks
-    
-    if (o.checkCollision(player)) {
-      if (player.powerUpActivate && activePowerUpType == 3) {
-        // Invincible: no death
+    for (int j = 0; j < worldHeight; j++) {
+      if (j != 0) {
+        newFraction.add(0);
       } else {
-        gameState = STATE_GAME_OVER;
-        println("Game Over - Collision with: " + o.getClass().getSimpleName() + " at x=" + o.x + ", y=" + o.y);
-        return;
+        newFraction.add(1);
       }
     }
 
-    if (o.x + TILE_SIZE < 0) {  // Remove off-screen obstacles
-      gameObstacles.remove(i);
-    }
+    world.add(newFraction);
   }
 }
 
-void updateAndDrawPowerUps() {
-  for (int i = activePowerUpsList.size() - 1; i >= 0; i--) {
-    powerUpsBase pu = activePowerUpsList.get(i);
-    pu.update(currentGameSpeed);
+void drawWorld() {
+  obstacles.clear();
+  for (int i = 0; i < world.size(); i++) {
+    ArrayList<Integer> col = world.get(i);
+    for (int j = 0; j < worldHeight; j++) {
+      if (col.get(j) == 1) {
+        float x = (i * blockSize) - (distance % blockSize);
+        float y = height - (j * blockSize);
+        obstacles.add(new Obstacle1(x, y));
+      } else if (col.get(j) == 2) {
+        float x = (i * blockSize) - (distance % blockSize);
+        float y = height - (j * blockSize);
+        obstacles.add(new Obstacle2(x, y));
+      }
+    }
+  }
+
+  for (ObstacleBase ob : obstacles) {
+    ob.display();
+  }
+
+  // Draw existing power-ups
+  for (int i = powerUpsList.size() - 1; i >= 0; i--) {
+    powerUpsBase pu = powerUpsList.get(i);
     pu.display();
+  }
+}
 
-    if (pu.checkCollected(player)) {
-      pu.onCollect(player);
-      activePowerUpsList.remove(i);
-      println("Player collected power-up TYPE: " + player.powerUps);
-    } else if (pu.x < -pu.size) {
-      activePowerUpsList.remove(i);
+void draw() {
+  switch (GAME_STATE) {
+  case GAME_RUN:
+    background(152, 255, 250);
+
+    // Score increment logic
+    if (player.powerUpActivate && activePowerUp == 1) {
+      incrementValue = 2;
+    } else {
+      incrementValue = 1;
     }
-  }
-}
-
-void drawPlayerWithEffects() {
-  if (player.powerUpActivate && activePowerUpType == 3) {
-    pushStyle();
-    tint(255, 223, 0, 200);
-    player.display();
-    popStyle();
-  } else {
-    player.display();
-  }
-}
-
-void handleGameScore() {
-  if (player.powerUpActivate && activePowerUpType == 1) scorePointValue = 2;
-  else scorePointValue = 1;
-
-  scoreFrameCounter++;
-  if (scoreFrameCounter >= 10) {
-    score += scorePointValue;
-    scoreFrameCounter = 0;
-  }
-}
-
-void drawGameHUD() {
-  fill(0);
-  textSize(32);
-  textAlign(LEFT, TOP);
-  text("Score: " + score, 20, 20);
-
-  String pName = "";
-  if (player.powerUpActivate) {
-    pName = getPowerUpNameFromType(activePowerUpType);
-    if (powerUpEffectTimer > 0) text("Active: " + pName + " (" + (powerUpEffectTimer / 60) + "s)", 20, 60);
-  } else if (player.powerUps != 0) {
-    pName = getPowerUpNameFromType(player.powerUps) + " (Press P)";
-    text("Collected: " + pName, 20, 60);
-  }
-}
-
-void checkActivePowerUpExpiration() {
-  if (player.powerUpActivate) {
-    powerUpEffectTimer--;
-    if (powerUpEffectTimer <= 0) {
-      println("Power-up expired: " + getPowerUpNameFromType(activePowerUpType));
-      if (activePowerUpType == 2 && player != null) player.jumpStrength = player.originalJumpStrength;
-      player.powerUpActivate = false;
-      player.powerUps = 0;
-      activePowerUpType = 0;
-      scorePointValue = 1;
-      powerUpEffectTimer = 0;
+    scoreDistance++;
+    if (scoreDistance % 20 == 0) {
+      score += incrementValue;
+      scoreDistance = 0;
     }
-  }
-}
 
-String getPowerUpNameFromType(int type) {
-  switch (type) {
-    case 1: return "Double Points";
-    case 2: return "Slow Motion";
-    case 3: return "Invincibility";
-    default: return "";
-  }
-}
+    // Adjust speed for slow motion power-up
+    if (player.powerUpActivate && activePowerUp == 2) {
+      speedTemp = speed * 0.75;
+    } else {
+      speedTemp = speed;
+    }
 
-void displayGameOverScreen() {
-  fill(255, 0, 0);
-  textAlign(CENTER, CENTER);
-  textSize(60);
-  text("GAME OVER", width / 2, height / 2 - 40);
-  textSize(40);
-  text("Score: " + score, width / 2, height / 2 + 20);
-  textSize(30);
-  text("Press 'R' to Restart", width / 2, height / 2 + 70);
+    //check for timer
+    if (player.powerUpActivate) {
+      if (POWERUP_DURATION > 0) {
+        POWERUP_DURATION--;
+      } else {
+        // Power-up duration ended, reset state
+        player.powerUpActivate = false;
+        activePowerUp = 0;
+        incrementValue = 1;
+        speedTemp = speed;  // Reset speed if slow-mo ended
+        // Any other cleanup/reset for power-up effects
+      }
+    }
+
+
+    // Update distance and check when to generate new world fraction
+    distance += speedTemp;
+    if (prevDistance / 80 < distance / 80) {
+      updateWorld();
+    }
+    prevDistance = distance;
+
+    // Player update and display
+    player.update();
+    player.display();
+    drawWorld();
+
+    // Display score and power-up status
+    fill(0);
+    textSize(32);
+    textAlign(LEFT, TOP);
+    text("Score: " + score, 20, 20);
+    String pName = "";
+    if (player.powerUpActivate) {
+      switch (activePowerUp) {
+      case 1:
+        pName = "Double Points";
+        break;
+      case 2:
+        pName = "Slow Motion";
+        break;
+      case 3:
+        pName = "INVINCIBLE";
+        break; // Added Invincible
+      }
+      if (POWERUP_DURATION > 0) {
+        text("Active: " + pName + " (" + (POWERUP_DURATION / 60) + "s)", 20, 60);
+      }
+    } else if (player.powerUps != 0) {
+      switch (player.powerUps) {
+      case 1:
+        pName = "Double Points (Press P)";
+        break;
+      case 2:
+        pName = "Slow Motion (Press P)";
+        break;
+      case 3:
+        pName = "INVINCIBLE (Press P)";
+        break; // Added Invincible
+      }
+      text("Collected: " + pName, 20, 60);
+    }
+
+    // Update and display power-ups
+    for (int i = powerUpsList.size() - 1; i >= 0; i--) {
+      powerUpsBase pu = powerUpsList.get(i);
+      pu.update(); // Move with the world
+
+      if (pu.checkCollected(player)) {
+        // Run the onCollect logic for the specific type
+        if (pu instanceof powerUp1)
+          ((powerUp1) pu).onCollect(player);
+        else if (pu instanceof powerUp2)
+          ((powerUp2) pu).onCollect(player);
+        else if (pu instanceof powerUp3)
+          ((powerUp3) pu).onCollect(player);
+        powerUpsList.remove(i);
+        println("Player collected power-up. Player has type: " + player.powerUps);
+      } else if (pu.x < -pu.size) {
+        powerUpsList.remove(i); // Remove off-screen power-ups
+      }
+    }
+
+    // Collision check with obstacles
+    for (int i = obstacles.size() - 1; i >= 0; i--) {
+      ObstacleBase o = obstacles.get(i);
+
+      if (o instanceof Obstacle1) {
+        if (o.checkCollision(player)) {
+          if (player.powerUpActivate && activePowerUp == 3) {
+            // Teleport player to top of Obstacle1 block
+            float top = o.y - o.h;
+            player.y = top - player.hh;  // just above block
+            player.velocityY = 0;
+            player.isJumping = false;
+            // No death on teleport
+            continue;
+          } else {
+            // Player dies if no invincibility
+            println("Player killed by Obstacle1");
+            GAME_STATE = DIE;
+            noLoop();
+          }
+        }
+      } else if (o instanceof Obstacle2) {
+        if (o.checkCollision(player)) {
+          if (player.powerUpActivate && activePowerUp == 3) {
+            // Player is invincible, treat Obstacle2 as platform:
+            // Mimic Obstacle3's landing logic here:
+            float top = o.y - o.h / 2; // adjust based on your Obstacle2 height
+            // Only land if falling onto top surface
+            if (player.velocityY >= 0 && player.y + player.hh <= top + 5) {
+              player.landOn(top);
+            }
+            // No death on spike while invincible
+          } else {
+            // Player dies on spike if not invincible
+            println("Player killed by Obstacle2");
+            GAME_STATE = DIE;
+            noLoop();
+          }
+        }
+      }
+    }
+
+
+    break;
+
+  case DIE:
+    println("Game Over!");
+    fill(0);
+    textAlign(CENTER, CENTER);
+    textSize(50);
+    text("Game Over! Score: " + score, width / 2, height / 2 - 30);
+    text("Press 'R' to Restart", width / 2, height / 2 + 30);
+    break;
+  }
 }
 
 void keyPressed() {
-  if (gameState == STATE_GAME_RUN) {
-    if ((key == ' ' || key == CODED && keyCode == UP) && player != null && !player.isJumping) player.jump();
-    if (key == 'p' || key == 'P') {
-      if (player != null && player.powerUps != 0 && !player.powerUpActivate) {
-        activePowerUpType = player.powerUps;
-        powerUpEffectTimer = getDurationForPowerUpType(activePowerUpType);
-        player.powerUpActivate = true;
-        println("Activated power-up: " + getPowerUpNameFromType(activePowerUpType));
-      } else if (player != null && player.powerUpActivate) {
-        println("A power-up is already active!");
-      } else {
-        println("You don't have any power-ups to activate!");
-      }
-    }
-  } else if (gameState == STATE_GAME_OVER) {
-    if (key == 'r' || key == 'R') resetGame();
+  if (key == ' ' && !player.isJumping && GAME_STATE == GAME_RUN) {
+    player.jump();
   }
-}
+  if (key == 'r' && GAME_STATE == DIE) {
+    resetGame();
+  }
+  if (key == 'p' && GAME_STATE == GAME_RUN) {
+    if (player.powerUps != 0 && !player.powerUpActivate) {
+      activePowerUp = player.powerUps;
 
-int getDurationForPowerUpType(int type) {
-  switch (type) {
-    case 1: return 600;
-    case 2: return 480;
-    case 3: return 300;
-    default: return 0;
+      switch (activePowerUp) {
+      case 1:
+        POWERUP_DURATION = 600;
+        break; // Double Points
+      case 2:
+        POWERUP_DURATION = 480;
+        break; // Slow-Mo
+      case 3:
+        POWERUP_DURATION = 300;
+        break; // Invincibility (e.g., 5 seconds)
+      }
+      player.powerUpActivate = true;
+      println("Activated power-up: " + activePowerUp + " for " + (POWERUP_DURATION / 60) + "s");
+    } else if (player.powerUpActivate) {
+      println("A power-up is already active!");
+    } else {
+      println("You don't have any power-ups to activate!");
+    }
   }
 }
 
 void resetGame() {
-  println("Resetting game...");
-  rwgCurrentElevation = 3;
-  worldScrollPixelOffset = 0;
-  rwgCanChangeElevation = true;
-  rwgCanAddObstacle = true;
-  rwgCurrentlyAddingFeature = false;
-  rwgPostFeatureTimer = 0;
-  rwgFeatureDurationCounter = 0;
-  rwgRavineDepth = 0;
-  rwgActiveFeatureTileType = TILE_AIR;
-
-  initializeEmptyAirForRWG();
-
-  gameObstacles.clear();
-  activePowerUpsList.clear();
-
-  if (player != null) {
-    float initialPlayerY = height - (rwgCurrentElevation * TILE_SIZE) - PLAYER_SPRITE_WIDTH / 2;
-    player.reset();
-    player.y = initialPlayerY;
-    player.x = width / 4;
-  }
-
   score = 0;
-  scoreFrameCounter = 0;
-  scorePointValue = 1;
-  activePowerUpType = 0;
-  powerUpEffectTimer = 0;
-  currentGameSpeed = baseGameSpeed;
+  scoreDistance = 0;
 
-  gameState = STATE_GAME_RUN;
-  if (!looping) loop();
-}
+  POWERUP_DURATION = 0;
+  activePowerUp = 0;
+  player.powerUps = 0;
+  player.powerUpActivate = false;
+  incrementValue = 1;
 
-// --- RWG initialization function ---
-void initializeEmptyAirForRWG() {
-  worldTileData.clear();
-  for (int i = 0; i < WORLD_VIEW_COLUMNS + 1; i++) {
-    ArrayList<Integer> newColumn = new ArrayList<Integer>();
-    for (int j = 0; j < WORLD_MAX_TILE_HEIGHT; j++) {
-      if (j < rwgCurrentElevation) newColumn.add(TILE_GROUND);
-      else newColumn.add(TILE_AIR);
-    }
-    worldTileData.add(newColumn);
-  }
-}
+  gameMovementStoppedByInvincibility = false; // Reset this flag
+  world.clear();
+  initializeEmptyAir();    // Fill world with empty air columns
 
-// --- RWG world generation ---
-void generateNextWorldColumnAndEntities() {
-  if (worldTileData.isEmpty()) {
-    initializeEmptyAirForRWG();
-    return;
-  }
+  // Reset obstacles (they will be re-added in drawWorld)
+  obstacles.clear();
 
-  worldTileData.remove(0);
+  // Reset player state and position
+  player.reset();
 
-  ArrayList<Integer> newTilesInColumn = new ArrayList<Integer>();
-  for (int i = 0; i < WORLD_MAX_TILE_HEIGHT; i++) {
-    newTilesInColumn.add(TILE_AIR);
-  }
+  // Reset RWG & distance scroll
+  currElevation = 1;           // Reset elevation to default
+  postAddingTimer = 0;
+  distance = 0;
+  prevDistance = 0;            // Also reset prevDistance
+  canChangeElevation = true;
+  canAddObstacle = true;
+  currentlyAddingObstacle = false;
+  obstacleSize = 0;
+  ravineDepth = 0;
 
-  if (rwgPostFeatureTimer <= 0) {
-    rwgCanChangeElevation = true;
-    rwgCanAddObstacle = true;
-  }
-
-  if (rwgCanChangeElevation && random(1) < 0.1) {
-    int change = (random(1) < 0.5) ? -1 : 1;
-    rwgCurrentElevation = constrain(rwgCurrentElevation + change, 2, WORLD_MAX_TILE_HEIGHT - 3);
-  }
-
-  if (rwgCanAddObstacle && !rwgCurrentlyAddingFeature && random(1) < 0.2) {
-    rwgCurrentlyAddingFeature = true;
-    rwgCanAddObstacle = false;
-    rwgActiveFeatureTileType = TILE_AIR;
-
-    int featureDecision = int(random(100));
-    if (featureDecision < 10 && rwgCurrentElevation > 2) {
-      rwgActiveFeatureTileType = 100; // gap code
-      rwgFeatureDurationCounter = int(random(2, 5));
-      rwgRavineDepth = int(random(1, rwgCurrentElevation - 1));
-    } else if (featureDecision < 30) {
-      rwgActiveFeatureTileType = TILE_SPIKE_PLACEHOLDER;
-      rwgFeatureDurationCounter = int(random(1, 3));
-      rwgRavineDepth = 0;
-    } else if (featureDecision < 80) {  // Only Obstacle2 blocks now
-      rwgActiveFeatureTileType = TILE_OBSTACLE2_PLACEHOLDER;
-      rwgFeatureDurationCounter = int(random(1, 4));
-      rwgRavineDepth = 0;
-    } else if (featureDecision < 95) {
-      rwgActiveFeatureTileType = TILE_POWERUP_DOUBLE_POINTS + int(random(3));
-      rwgFeatureDurationCounter = 1;
-      rwgRavineDepth = 0;
-    } else {
-      rwgCurrentlyAddingFeature = false;
-      rwgCanAddObstacle = true;
-    }
-
-    if (rwgActiveFeatureTileType != TILE_AIR) {
-      rwgPostFeatureTimer = rwgFeatureDurationCounter + int(random(2, 5));
-    }
-  }
-
-  int effectiveGroundLevel = (rwgCurrentlyAddingFeature && rwgActiveFeatureTileType == 100)
-                             ? max(0, rwgCurrentElevation - rwgRavineDepth)
-                             : rwgCurrentElevation;
-
-  for (int j = 0; j < WORLD_MAX_TILE_HEIGHT; j++) {
-    newTilesInColumn.set(j, (j < effectiveGroundLevel) ? TILE_GROUND : TILE_AIR);
-  }
-
-  // Spawn spikes inside pits only if no Obstacle2 block in same tile
-  if (rwgCurrentlyAddingFeature && rwgActiveFeatureTileType == 100) {
-    if (rwgFeatureDurationCounter <= 2) { // Fill small pits only
-      int pitFloorRow = rwgCurrentElevation - rwgRavineDepth;
-      if (pitFloorRow >= 0 && pitFloorRow < WORLD_MAX_TILE_HEIGHT) {
-        if (newTilesInColumn.get(pitFloorRow) != TILE_OBSTACLE2_PLACEHOLDER) {
-          newTilesInColumn.set(pitFloorRow, TILE_SPIKE_PLACEHOLDER);
-        }
-      }
-    }
-  } else if (rwgCurrentlyAddingFeature && rwgFeatureDurationCounter > 0) {
-    if (rwgActiveFeatureTileType == TILE_SPIKE_PLACEHOLDER || rwgActiveFeatureTileType == TILE_OBSTACLE2_PLACEHOLDER) {
-      if (effectiveGroundLevel >= 0 && effectiveGroundLevel < WORLD_MAX_TILE_HEIGHT) {
-        newTilesInColumn.set(effectiveGroundLevel, rwgActiveFeatureTileType);
-      }
-    } else if (rwgActiveFeatureTileType >= TILE_POWERUP_DOUBLE_POINTS) {
-      int powerUpRow = min(WORLD_MAX_TILE_HEIGHT - 1, effectiveGroundLevel + 1);
-      if (powerUpRow >= effectiveGroundLevel && newTilesInColumn.get(powerUpRow) == TILE_AIR) {
-        newTilesInColumn.set(powerUpRow, rwgActiveFeatureTileType);
-      }
-    }
-  }
-
-  if (rwgCurrentlyAddingFeature) {
-    rwgFeatureDurationCounter--;
-    if (rwgFeatureDurationCounter <= 0) {
-      rwgCurrentlyAddingFeature = false;
-      rwgActiveFeatureTileType = TILE_AIR;
-      rwgRavineDepth = 0;
-    }
-  }
-  if (rwgPostFeatureTimer > 0) rwgPostFeatureTimer--;
-
-  worldTileData.add(newTilesInColumn);
-
-  int justAddedColIdx = worldTileData.size() - 1;
-  float entitySpawnX = (justAddedColIdx * TILE_SIZE) + TILE_SIZE / 2.0f;
-
-  // Spawn spikes first
-  for (int j = 0; j < WORLD_MAX_TILE_HEIGHT; j++) {
-    if (newTilesInColumn.get(j) == TILE_SPIKE_PLACEHOLDER) {
-      float entityBaseY = height - (j * TILE_SIZE);
-      gameObstacles.add(new Obstacle1(entitySpawnX, entityBaseY));
-      newTilesInColumn.set(j, TILE_GROUND);
-    }
-  }
-  // Spawn Obstacle2 blocks after spikes to draw on top
-  for (int j = 0; j < WORLD_MAX_TILE_HEIGHT; j++) {
-    if (newTilesInColumn.get(j) == TILE_OBSTACLE2_PLACEHOLDER) {
-      float entityBaseY = height - (j * TILE_SIZE);
-      gameObstacles.add(new Obstacle2(entitySpawnX, entityBaseY));
-      newTilesInColumn.set(j, TILE_GROUND);
-    }
-  }
-
-}
-
-// --- Drawing ---
-void drawWorldTiles(float scrollOffset) {
-  for (int i = 0; i < worldTileData.size(); i++) {
-    for (int j = 0; j < WORLD_MAX_TILE_HEIGHT; j++) {
-      int tileType = worldTileData.get(i).get(j);
-      float tileX = (i * TILE_SIZE) - scrollOffset;
-      float tileY = height - ((j + 1) * TILE_SIZE);
-
-      if (tileX < -TILE_SIZE || tileX > width + TILE_SIZE) continue;
-
-      if (tileType == TILE_GROUND) {
-        fill(0, 150, 0);
-        noStroke();
-        rect(tileX, tileY, TILE_SIZE, TILE_SIZE);
-      }
-    }
-  }
+  // Game state and loop
+  GAME_STATE = GAME_RUN;
+  loop();
 }

@@ -1,29 +1,30 @@
 class Obstacle1 extends ObstacleBase {
-  float triW = 80, triH = 80;
-  float hitW = 50, hitH = 20;
-  
   Obstacle1(float x, float y) {
-    super(x, y);
+    super(x, y, 80, 80);  // width=80, height=80
   }
-  
-  void display() {
-    fill(255, 0, 0);
-    noStroke();
-    beginShape();
-    vertex(x, y - triH);
-    vertex(x + triW / 2, y);
-    vertex(x - triW / 2, y);
-    endShape(CLOSE);
-  }
-  
-  boolean checkCollision(Player p) {
-    float halfW = hitW / 2, halfH = hitH / 2;
-    float cx = x, cy = y - halfH;
-    float left = cx - halfW, right = cx + halfW;
-    float top = cy - halfH, bottom = cy + halfH;
-    float pLeft = p.x - p.hw, pRight = p.x + p.hw;
-    float pTop = p.y - p.hh, pBottom = p.y + p.hh;
 
-    return (pRight > left && pLeft < right && pBottom > top && pTop < bottom);
+  void display() {
+    fill(0, 255, 0);
+    rectMode(CENTER);
+    rect(x, y - h/2, w, h);  // Use base class fields
   }
+
+boolean checkCollision(Player p) {
+  float left = x - w/2, right = x + w/2;
+  boolean overlapX = p.x + p.hw > left && p.x - p.hw < right;
+  if (!overlapX) return false;
+
+  float top = y - h, bottom = y;
+  float playerBottom = p.y + p.hh;
+  float playerTop = p.y - p.hh;
+
+  // Landing on top — no collision
+  boolean landingFromAbove = playerBottom <= top + 1 && playerBottom + p.velocityY >= top;
+  if (landingFromAbove) return false;
+
+  boolean verticalOverlap = playerTop < bottom && playerBottom > top;
+  boolean fromLeft = (p.x + p.hw > left) && (p.x < x);
+
+  return verticalOverlap && fromLeft;  // true if collision from left
+}
 }

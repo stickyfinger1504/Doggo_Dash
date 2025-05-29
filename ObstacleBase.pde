@@ -1,18 +1,22 @@
-// In ObstacleBase.java
 abstract class ObstacleBase {
-  float x, y; // For Obstacle objects, 'y' is typically their base coordinate.
-  // NO local 'speed' variable here. Uses global 'currentGameSpeed'.
+  float x, y;
+  float w, h;  // Add both width and height for generality
 
-  ObstacleBase(float startX, float startY) {
-    this.x = startX; // World X coordinate
-    this.y = startY; // World Y coordinate (usually base of the object)
+  ObstacleBase(float x, float y, float w, float h) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
   }
 
+  // shared movement
   void update() {
-    // Movement (x -= currentGameSpeed) is handled externally in the main sketch.
-    // Subclasses can override for other animation/behavior.
+    x -= speed;
   }
 
+  // draw yourself
   abstract void display();
-  abstract boolean checkCollision(Player p); // Returns true if FATAL, false if non-fatal (e.g. landing)
+
+  // return true if this obstacle kills the player
+  abstract boolean checkCollision(Player p);
 }

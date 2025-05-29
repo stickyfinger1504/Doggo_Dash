@@ -1,4 +1,5 @@
 class powerUp2 extends powerUpsBase {
+  float duration=480;
   powerUp2(float x, float y) {
     super(x, y);
   }
@@ -9,7 +10,7 @@ class powerUp2 extends powerUpsBase {
   }
 
   void onCollect(Player p) {
-    p.powerUps = 2;
+    p.powerUps=2;
     println("Slo-mo!");
   }
 }

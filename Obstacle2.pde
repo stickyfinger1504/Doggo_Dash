@@ -1,52 +1,62 @@
 class Obstacle2 extends ObstacleBase {
-  float w = 80, h = 80;
+  float triW = 80, triH = 80;   // full size for drawing
+  float hitW = 50, hitH = 20;   // smaller kill hitbox
 
-  Obstacle2(float x, float y_base) {
-    super(x, y_base);
+  Obstacle2(float x, float y) {
+    super(x, y, 80, 80);  // Using full 80x80 for position, w, h
   }
 
-  @Override
   void display() {
-    fill(0, 150, 0);
+    fill(255, 0, 0);
     noStroke();
-    rectMode(CORNER);
-    rect(x - w / 2, y - h, w, h);
+
+    // Draw the triangle inside the 80x80 box
+    beginShape();
+    vertex(x, y - triH);          // top tip
+    vertex(x + triW/2, y);        // bottom right
+    vertex(x - triW/2, y);        // bottom left
+    endShape(CLOSE);
   }
 
-  @Override
   boolean checkCollision(Player p) {
-    float obsLeft = x - w / 2;
-    float obsRight = x + w / 2;
-    float obsTop = y - h;
-    float obsBottom = y;
+    if (p.powerUpActivate && activePowerUp == 3) {
+    float left  = x - w/2, right = x + w/2;
+    boolean overlapX = p.x + p.hw > left && p.x - p.hw < right;
+    if (!overlapX) return false;
 
-    float playerLeft = p.x - p.hw;
-    float playerRight = p.x + p.hw;
-    float playerTopEdge = p.y - p.hh;
-    float playerFeet = p.y + p.hh;
+    float top    = y - h;
+      //bottom = y;
 
-    // Check horizontal overlap
-    boolean horizontalOverlap = (playerRight > obsLeft && playerLeft < obsRight);
-    if (!horizontalOverlap) {
-      return false; 
+    // if moving upward, always let through
+    if (p.velocityY < 0) return false;
+
+    // now only if you're falling and cross the top edge
+    boolean wasAbove = p.y + p.hh <= top;
+    boolean willCross = p.y + p.hh + p.velocityY >= top;
+    if (wasAbove && willCross) {
+      // land on top
+      p.landOn(top);
     }
 
-    // Check landing on top
-    if (p.velocityY > 0.01f) { // falling down
-      float playerPrevFeet = (p.y - p.velocityY) + p.hh;
-      boolean wasAboveForLanding = playerPrevFeet < obsTop + (p.hh * 0.3f);
-      if (wasAboveForLanding && playerFeet >= obsTop && playerFeet < obsBottom) {
-        p.landOn(obsTop);
-        return false; // landed safely, no death
-      }
-    }
+    // never kill on side hits, and no blocking from below
+    return false;
+    } else {
+      // Normal kill hitbox 50x20
+      float halfW = hitW / 2;
+      float halfH = hitH / 2;
 
-    // If player collides otherwise (side or bottom), it's fatal
-    boolean verticalOverlap = (playerTopEdge < obsBottom && playerFeet > obsTop);
-    if (verticalOverlap) {
-      return true;  // Fatal collision: player dies
-    }
+      float left = x - halfW;
+      float right = x + halfW;
+      float top = y - halfH;
+      float bottom = y + halfH;
 
-    return false;  // No collision otherwise
+      float pLeft = p.x - p.hw;
+      float pRight = p.x + p.hw;
+      float pTop = p.y - p.hh;
+      float pBottom = p.y + p.hh;
+
+      return (pRight > left && pLeft < right &&
+        pBottom > top && pTop < bottom);
+    }
   }
 }
