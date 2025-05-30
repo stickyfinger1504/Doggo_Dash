@@ -1,16 +1,34 @@
 // Crucial Variables
 final int worldLength = 22; // Size() untuk world yang kelihatan di screen
-final int worldHeight = 20; // Maximum world height
+final int worldHeight = 9; // Maximum world height
 final int blockSize = 80;
 final int speed = 5;
 float speedTemp = speed; // for slo-mo
 long score = 0;
 int scoreDistance;
 int prevDistance = 0; // NEW: Track previous distance for world update
+int frame;
+
+// Decoration Variables
+ArrayList<Integer> elevations;
+
+// Background
+PImage backgroundImage;
+
+// Obstacle 1
+PImage grass_img;
+PImage dirt_img;
+PImage rock_img;
+
+// Obstacle 2
+PImage bee_img;
+PImage mud_img;
+PImage stream_img;
 
 // player related
 final float squareWidth = 80;       // Player sprite size
 PImage img;                         // Player image
+PImage[] doggie = new PImage[7];
 Player player;
 
 // obstacle
@@ -141,16 +159,47 @@ int[][] world2 = {
 // Setup
 // Setup
 void setup() {
-  size(1600, 900);
-  background(152, 255, 250);
+  String filename;
+  
+  size(1600, 900, P3D);
+  
+  backgroundImage = loadImage("Images/background.jpg");
+  backgroundImage.resize(1600, 900);
+  background(backgroundImage);
+  
+  frameRate(60);
+  
   img = loadImage("sahur.jpg"); // Make sure player.png is in your data folder!
-  img.resize((int)squareWidth, (int)squareWidth);
+  img.resize(80, 80);
+  
+  for (int i = 0; i < 7; i++) {
+    filename = "Images/" + (i + 1) + ".PNG";
+    doggie[i] = loadImage(filename);
+    doggie[i].resize(80, 80);
+  }
+  
+  grass_img = loadImage("Images/grass_block.png");
+  dirt_img = loadImage("Images/dirt.png");
+  rock_img = loadImage("Images/rock_block.png");
+  grass_img.resize(80, 80);
+  dirt_img.resize(80, 80);
+  rock_img.resize(80, 80);
+  
+  bee_img = loadImage("Images/bee.png");
+  mud_img = loadImage("Images/mud.png");
+  stream_img = loadImage("Images/stream.png");
+  bee_img.resize(80, 80);
+  mud_img.resize(80, 80);
+  stream_img.resize(80, 80);
+  
+  elevations = new ArrayList<Integer>();
   powerUpsList = new ArrayList<powerUpsBase>();
   world = new ArrayList<ArrayList<Integer>>();
-  player = new Player(width / 4, 0, img);
-  initializeEmptyAir();
+  player = new Player(width / 4, 0, doggie);
   GAME_STATE = GAME_RUN;
   obstacles = new ArrayList<ObstacleBase>();
+  frame = 0;
+  initializeEmptyAir();
   //noStroke();
 }
 
@@ -171,6 +220,7 @@ void updateWorld() {
 
   // Delete the last part
   world.remove(0); // Unload the leftmost fraction
+  elevations.remove(0);
 
   // Initialize RNG
   rng1 = int(random(0, 10));
@@ -182,17 +232,18 @@ void updateWorld() {
    */
   if (rng1 == 0 && canChangeElevation) {
     // Elevation Decrease
-    if ((elevationType == 0 || (currElevation > 8 && elevationType == 1)) && currElevation >= 2) {
+    if ((elevationType == 0 || (currElevation > 6 && elevationType == 1)) && currElevation >= 2) {
       obstacleSize = int(random(1, currElevation - 1));
       currElevation -= obstacleSize;
       postAddingTimer = 3 + obstacleSize;
     }
 
     // Elevation Increase
-    else if (currElevation < 15) {
-      obstacleSize = int(random(0, 5)) == 0 ? 2 : 1;
+    else if (currElevation <= 7) {
+      //obstacleSize = currElevation == 7 ? 1 : int(random(0, 5)) == 0 ? 2 : 1;
+      obstacleSize = 1;
       currElevation += obstacleSize;
-      postAddingTimer = 3;
+      postAddingTimer = 4;
     }
 
     // Variable Update
@@ -213,13 +264,13 @@ void updateWorld() {
     if (obstacleType == 0 && currElevation > 0) {
       obstacleSize = int(random(0, 4)) + 1;
       ravineDepth = int(random(0, currElevation)) + 1;
-      postAddingTimer = obstacleSize + 1;
+      postAddingTimer = obstacleSize + 3;
     }
 
     // Spike
     else {
       obstacleSize = int(random(0, 3)) + 1;
-      postAddingTimer = obstacleSize + 2;
+      postAddingTimer = 6;
     }
 
     // Variable Update
@@ -240,6 +291,7 @@ void updateWorld() {
   if (obstacleSize <= 0) {
     currentlyAddingObstacle = false;
     obstacleSize = 0;
+    ravineDepth = 0;
   }
 
   // Update Timer
@@ -248,8 +300,7 @@ void updateWorld() {
   if (postAddingTimer <= 0) {
     canChangeElevation = true;
     canAddObstacle = true;
-
-    ravineDepth = 0;
+    
     postAddingTimer = 0;
   }
 
@@ -287,13 +338,16 @@ void updateWorld() {
 
   // Put the generated fraction into the world
   world.add(worldFraction);
+  elevations.add(currElevation);
 }
 
 // Buat initialize worldnya biar empty alias ada ruang buat start
 void initializeEmptyAir() {
+  elevations.clear();
+  
   for (int i = 0; i < worldLength; i++) {
     ArrayList<Integer> newFraction = new ArrayList<Integer>();
-
+    
     for (int j = 0; j < worldHeight; j++) {
       if (j != 0) {
         newFraction.add(0);
@@ -301,8 +355,39 @@ void initializeEmptyAir() {
         newFraction.add(1);
       }
     }
-
+    
+    elevations.add(currElevation);
     world.add(newFraction);
+  }
+  
+  for (int i = 0; i < world.size(); i++) {
+    ArrayList<Integer> col = world.get(i);
+    for (int j = 0; j < worldHeight; j++) {
+      if (col.get(j) == 1) {
+        float x = (i * blockSize) - (distance % blockSize);
+        float y = height - (j * blockSize);
+        
+        if (j == elevations.get(i) - 1) {
+          obstacles.add(new Obstacle1(x, y, grass_img));
+        }
+        else {
+          obstacles.add(new Obstacle1(x, y, dirt_img));
+        }
+      } else if (col.get(j) == 2) {
+        float x = (i * blockSize) - (distance % blockSize);
+        float y = height - (j * blockSize);
+        
+        if (j == elevations.get(i)) {
+          obstacles.add(new Obstacle2(x, y, bee_img));
+        }
+        else if (j == elevations.get(i) - 1) {
+          obstacles.add(new Obstacle2(x, y, mud_img));
+        }
+        else {
+          obstacles.add(new Obstacle2(x, y, stream_img));
+        }
+      }
+    }
   }
 }
 
@@ -314,11 +399,26 @@ void drawWorld() {
       if (col.get(j) == 1) {
         float x = (i * blockSize) - (distance % blockSize);
         float y = height - (j * blockSize);
-        obstacles.add(new Obstacle1(x, y));
+        
+        if (j == elevations.get(i) - 1) {
+          obstacles.add(new Obstacle1(x, y, grass_img));
+        }
+        else {
+          obstacles.add(new Obstacle1(x, y, dirt_img));
+        }
       } else if (col.get(j) == 2) {
         float x = (i * blockSize) - (distance % blockSize);
         float y = height - (j * blockSize);
-        obstacles.add(new Obstacle2(x, y));
+        
+        if (j == elevations.get(i)) {
+          obstacles.add(new Obstacle2(x, y, bee_img));
+        }
+        else if (j == elevations.get(i) - 1) {
+          obstacles.add(new Obstacle2(x, y, mud_img));
+        }
+        else {
+          obstacles.add(new Obstacle2(x, y, stream_img));
+        }
       }
     }
   }
@@ -337,7 +437,7 @@ void drawWorld() {
 void draw() {
   switch (GAME_STATE) {
   case GAME_RUN:
-    background(152, 255, 250);
+    background(backgroundImage);
 
     // Score increment logic
     if (player.powerUpActivate && activePowerUp == 1) {
@@ -382,7 +482,7 @@ void draw() {
 
     // Player update and display
     player.update();
-    player.display();
+    player.display(frame);
     drawWorld();
 
     // Display score and power-up status
@@ -495,6 +595,8 @@ void draw() {
     text("Press 'R' to Restart", width / 2, height / 2 + 30);
     break;
   }
+  
+  frame++;
 }
 
 void keyPressed() {
@@ -541,6 +643,7 @@ void resetGame() {
 
   gameMovementStoppedByInvincibility = false; // Reset this flag
   world.clear();
+  elevations.clear();
   initializeEmptyAir();    // Fill world with empty air columns
 
   // Reset obstacles (they will be re-added in drawWorld)
@@ -559,6 +662,7 @@ void resetGame() {
   currentlyAddingObstacle = false;
   obstacleSize = 0;
   ravineDepth = 0;
+  frame = 0;
 
   // Game state and loop
   GAME_STATE = GAME_RUN;

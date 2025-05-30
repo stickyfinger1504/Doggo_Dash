@@ -13,10 +13,11 @@ class Player {
 
   float hw, hh;             // Half‐width & half‐height for collision
 
-  PImage img;               // Image of the player
+  PImage[] img;               // Image of the player
+  
 
 
-  Player(float startX, float startY, PImage playerImg) {
+  Player(float startX, float startY, PImage[] playerImg) {
     x = startX;
     y = startY;
     img = playerImg;
@@ -110,12 +111,12 @@ class Player {
 
 
 
-  void display() {
+  void display(int frame) {
     pushMatrix();
     translate(x, y);
     rotate(radians(angle));
     imageMode(CENTER);
-    image(img, 0, 0);
+    image(img[(frame / 5) % 7], 0, 0);
     popMatrix();
   }
 

@@ -1,21 +1,31 @@
 class Obstacle2 extends ObstacleBase {
   float triW = 80, triH = 80;   // full size for drawing
   float hitW = 50, hitH = 20;   // smaller kill hitbox
+  float angle = 0;
+  PImage blockImage;
 
-  Obstacle2(float x, float y) {
+  Obstacle2(float x, float y, PImage image) {
     super(x, y, 80, 80);  // Using full 80x80 for position, w, h
+    
+    blockImage = image;
   }
 
   void display() {
-    fill(255, 0, 0);
-    noStroke();
+    //fill(255, 0, 0);
+    //noStroke();
 
-    // Draw the triangle inside the 80x80 box
-    beginShape();
-    vertex(x, y - triH);          // top tip
-    vertex(x + triW/2, y);        // bottom right
-    vertex(x - triW/2, y);        // bottom left
-    endShape(CLOSE);
+    //// Draw the triangle inside the 80x80 box
+    //beginShape();
+    //vertex(x, y - triH);          // top tip
+    //vertex(x + triW/2, y);        // bottom right
+    //vertex(x - triW/2, y);        // bottom left
+    //endShape(CLOSE);
+    pushMatrix();
+    translate(x, y);
+    rotate(radians(angle));
+    imageMode(CENTER);
+    image(blockImage, 0, -40);
+    popMatrix();
   }
 
   boolean checkCollision(Player p) {

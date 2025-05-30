@@ -13,6 +13,7 @@ boolean currentlyAddingObstacle = false;
 int currElevation = 1;
 int postAddingTimer = 0;
 int distance = 0;
+int speed = 5;
 
 int obstacleSize = 0; // RNG for obstacle size
 int ravineDepth = 0; // RNG for ravine gap depth
@@ -271,5 +272,5 @@ void draw() {
     
     drawWorld();
 
-    distance += 4;
+    distance += speed;
 }
