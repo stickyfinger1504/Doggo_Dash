@@ -40,6 +40,7 @@ int activePowerUp = 0;        // 0 = none, 1 = double points, 2 = slow-mo, 3 = i
 int POWERUP_DURATION = 0;
 int incrementValue = 1;       // Score multiplier
 boolean gameMovementStoppedByInvincibility = false;
+boolean inSlowMo = false;
 int powerUpCooldown = 0; // frames to wait before spawning next power-up
 final int powerUpCooldownMax = 20; // e.g. must wait 10 columns
 
@@ -185,7 +186,7 @@ void setup() {
   dirt_img.resize(80, 80);
   rock_img.resize(80, 80);
   
-  bee_img = loadImage("Images/bee.png");
+  bee_img = loadImage("Images/rock_spike.png");
   mud_img = loadImage("Images/mud.png");
   stream_img = loadImage("Images/stream.png");
   bee_img.resize(80, 80);
@@ -322,12 +323,12 @@ void updateWorld() {
 
         int type = int(random(1, 4)); // Randomly 1, 2 or 3 power-up type
 
-        //if (type == 1)
-        //  powerUpsList.add(new powerUp1(x, y - blockSize / 2));
-        //else if (type == 2)
-        //powerUpsList.add(new powerUp2(x, y - blockSize / 2));
-        //else
-        powerUpsList.add(new powerUp3(x, y - blockSize / 2));
+        if (type == 1)
+          powerUpsList.add(new powerUp1(x, y - blockSize / 2));
+        else if (type == 2)
+          powerUpsList.add(new powerUp2(x, y - blockSize / 2));
+        else
+          powerUpsList.add(new powerUp3(x, y - blockSize / 2));
 
         powerUpCooldown = powerUpCooldownMax; // Reset cooldown
         break; // Only spawn one power-up per new column
@@ -356,10 +357,11 @@ void initializeEmptyAir() {
       }
     }
     
-    elevations.add(currElevation);
+    elevations.add(1);
     world.add(newFraction);
   }
   
+  obstacles.clear();
   for (int i = 0; i < world.size(); i++) {
     ArrayList<Integer> col = world.get(i);
     for (int j = 0; j < worldHeight; j++) {
@@ -453,21 +455,28 @@ void draw() {
 
     // Adjust speed for slow motion power-up
     if (player.powerUpActivate && activePowerUp == 2) {
-      speedTemp = speed * 0.75;
+      inSlowMo = true;
     } else {
-      speedTemp = speed;
+      inSlowMo = false;
     }
 
     //check for timer
-    if (player.powerUpActivate) {
+    if (player.powerUpActivate || frame == 0) {
       if (POWERUP_DURATION > 0) {
         POWERUP_DURATION--;
+        
+        if (inSlowMo) {
+          frameRate(30);
+        }
       } else {
         // Power-up duration ended, reset state
         player.powerUpActivate = false;
+        player.powerUps = 0;
         activePowerUp = 0;
         incrementValue = 1;
-        speedTemp = speed;  // Reset speed if slow-mo ended
+        inSlowMo = false;
+        frameRate(60);  // Reset speed if slow-mo ended
+        
         // Any other cleanup/reset for power-up effects
       }
     }
@@ -504,7 +513,12 @@ void draw() {
         break; // Added Invincible
       }
       if (POWERUP_DURATION > 0) {
-        text("Active: " + pName + " (" + (POWERUP_DURATION / 60) + "s)", 20, 60);
+        if (!inSlowMo) {
+          text("Active: " + pName + " (" + (POWERUP_DURATION / 60) + "s)", 20, 60);
+        }
+        else {
+          text("Active: " + pName + " (" + (POWERUP_DURATION / 30) + "s)", 20, 60);
+        }
       }
     } else if (player.powerUps != 0) {
       switch (player.powerUps) {
@@ -615,14 +629,20 @@ void keyPressed() {
         POWERUP_DURATION = 600;
         break; // Double Points
       case 2:
-        POWERUP_DURATION = 480;
+        POWERUP_DURATION = 240;
         break; // Slow-Mo
       case 3:
         POWERUP_DURATION = 300;
         break; // Invincibility (e.g., 5 seconds)
       }
       player.powerUpActivate = true;
-      println("Activated power-up: " + activePowerUp + " for " + (POWERUP_DURATION / 60) + "s");
+      
+      if (!inSlowMo) {
+        println("Activated power-up: " + activePowerUp + " for " + (POWERUP_DURATION / 60) + "s");
+      }
+      else {
+        println("Activated power-up: " + activePowerUp + " for " + (POWERUP_DURATION / 30) + "s");
+      }
     } else if (player.powerUpActivate) {
       println("A power-up is already active!");
     } else {
@@ -639,6 +659,7 @@ void resetGame() {
   activePowerUp = 0;
   player.powerUps = 0;
   player.powerUpActivate = false;
+  inSlowMo = false;
   incrementValue = 1;
 
   gameMovementStoppedByInvincibility = false; // Reset this flag

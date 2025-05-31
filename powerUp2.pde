@@ -1,5 +1,5 @@
 class powerUp2 extends powerUpsBase {
-  float duration=480;
+  float duration=240;
   powerUp2(float x, float y) {
     super(x, y);
   }
