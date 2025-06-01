@@ -14,6 +14,7 @@ ArrayList<Integer> elevations;
 
 // Background
 PImage backgroundImage;
+PImage welcome;
 
 // Obstacle 1
 PImage grass_img;
@@ -172,6 +173,7 @@ void setup() {
   backgroundImage = loadImage("Images/background.jpg");
   backgroundImage.resize(1600, 900);
   background(backgroundImage);
+  welcome=loadImage("Images/Welcome_screen.png");
   
   img = loadImage("sahur.jpg"); // Make sure player.png is in your data folder!
   img.resize(80, 80);
@@ -207,7 +209,7 @@ void setup() {
   powerUpsList = new ArrayList<powerUpsBase>();
   world = new ArrayList<ArrayList<Integer>>();
   player = new Player(width / 4, 0, doggie);
-  GAME_STATE = GAME_RUN;
+  GAME_STATE = GAME_START;
   obstacles = new ArrayList<ObstacleBase>();
   frame = 0;
   initializeEmptyAir();
@@ -448,6 +450,10 @@ void drawWorld() {
 
 void draw() {
   switch (GAME_STATE) {
+  case GAME_START:
+    background(backgroundImage);
+    image(welcome,0,0);
+   break;
   case GAME_RUN:
     background(backgroundImage);
 
@@ -633,6 +639,9 @@ void keyPressed() {
   }
   if (key == 'r' && GAME_STATE == DIE) {
     resetGame();
+  }
+  if(key == ENTER && GAME_STATE == GAME_START){
+   GAME_STATE=GAME_RUN; 
   }
   if (key == 'p' && GAME_STATE == GAME_RUN) {
     if (player.powerUps != 0 && !player.powerUpActivate) {
