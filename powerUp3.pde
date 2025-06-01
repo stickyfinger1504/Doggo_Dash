@@ -1,14 +1,19 @@
 class powerUp3 extends powerUpsBase {
   float duration = 300; // Duration in frames (e.g., 5 seconds at 60fps)
 
-  powerUp3(float x, float y) {
+  PImage blockImage;
+  powerUp3(float x, float y, PImage image) {
     super(x, y);
+    blockImage=image;
   }
 
   @Override
-  void display() {
-    fill(255, 0, 255); // Magenta for Invincibility
-    ellipse(x, y, size, size);
+    void display() {
+    pushMatrix();
+    translate(x, y);
+    imageMode(CENTER);
+    image(blockImage, 0, -40);
+    popMatrix();
   }
 
   // @Override // Assuming onCollect is meant to be part of an interface or overridden

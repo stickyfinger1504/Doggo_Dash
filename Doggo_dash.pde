@@ -3,7 +3,7 @@ final int worldLength = 22; // Size() untuk world yang kelihatan di screen
 final int worldHeight = 9; // Maximum world height
 final int blockSize = 80;
 final int speed = 5;
-float speedTemp = speed; // for slo-mo
+int speedTemp = speed; // for slo-mo
 long score = 0;
 int scoreDistance;
 int prevDistance = 0; // NEW: Track previous distance for world update
@@ -25,10 +25,15 @@ PImage bee_img;
 PImage mud_img;
 PImage stream_img;
 
+// Power Ups
+PImage double_points_img;
+PImage invincibility_img;
+PImage slo_mo_img;
+
 // player related
 final float squareWidth = 80;       // Player sprite size
 PImage img;                         // Player image
-PImage[] doggie = new PImage[7];
+PImage[] doggie = new PImage[10];
 Player player;
 
 // obstacle
@@ -168,8 +173,6 @@ void setup() {
   backgroundImage.resize(1600, 900);
   background(backgroundImage);
   
-  frameRate(60);
-  
   img = loadImage("sahur.jpg"); // Make sure player.png is in your data folder!
   img.resize(80, 80);
   
@@ -192,6 +195,13 @@ void setup() {
   bee_img.resize(80, 80);
   mud_img.resize(80, 80);
   stream_img.resize(80, 80);
+
+  double_points_img=loadImage("Images/double_points.png");
+  invincibility_img=loadImage("Images/invincibility.png");
+  slo_mo_img=loadImage("Images/slow_mo_and_jump_boost.png");
+  double_points_img.resize(40,40);
+  invincibility_img.resize(40,40);
+  slo_mo_img.resize(40,40);
   
   elevations = new ArrayList<Integer>();
   powerUpsList = new ArrayList<powerUpsBase>();
@@ -324,11 +334,11 @@ void updateWorld() {
         int type = int(random(1, 4)); // Randomly 1, 2 or 3 power-up type
 
         if (type == 1)
-          powerUpsList.add(new powerUp1(x, y - blockSize / 2));
+          powerUpsList.add(new powerUp1(x, y,double_points_img));
         else if (type == 2)
-          powerUpsList.add(new powerUp2(x, y - blockSize / 2));
+          powerUpsList.add(new powerUp2(x, y,slo_mo_img));
         else
-          powerUpsList.add(new powerUp3(x, y - blockSize / 2));
+          powerUpsList.add(new powerUp3(x, y,invincibility_img));
 
         powerUpCooldown = powerUpCooldownMax; // Reset cooldown
         break; // Only spawn one power-up per new column
@@ -466,7 +476,9 @@ void draw() {
         POWERUP_DURATION--;
         
         if (inSlowMo) {
-          frameRate(30);
+          speedTemp=int(speed*0.75);
+          player.gravity=0.2;
+          player.jumpStrength=-11;
         }
       } else {
         // Power-up duration ended, reset state
@@ -476,7 +488,9 @@ void draw() {
         incrementValue = 1;
         inSlowMo = false;
         frameRate(60);  // Reset speed if slow-mo ended
-        
+        speedTemp=speed;
+        player.gravity=0.3;
+        player.jumpStrength=-10;
         // Any other cleanup/reset for power-up effects
       }
     }
@@ -506,7 +520,7 @@ void draw() {
         pName = "Double Points";
         break;
       case 2:
-        pName = "Slow Motion";
+        pName = "Slow Motion & Jump Boost";
         break;
       case 3:
         pName = "INVINCIBLE";
@@ -526,7 +540,7 @@ void draw() {
         pName = "Double Points (Press P)";
         break;
       case 2:
-        pName = "Slow Motion (Press P)";
+        pName = "Slow Motion & Jump Boost (Press P)";
         break;
       case 3:
         pName = "INVINCIBLE (Press P)";

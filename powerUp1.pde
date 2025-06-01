@@ -1,12 +1,17 @@
 class powerUp1 extends powerUpsBase {
   float duration=600;
-  powerUp1(float x, float y) {
+  PImage blockImage;
+  powerUp1(float x, float y, PImage image) {
     super(x, y);
+    blockImage=image;
   }
 
   void display() {
-    fill(255, 255, 0);
-    ellipse(x, y, size, size);
+    pushMatrix();
+    translate(x, y);
+    imageMode(CENTER);
+    image(blockImage, 0, -40);
+    popMatrix();
   }
 
   void onCollect(Player p) {
